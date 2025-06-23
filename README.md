@@ -1,4 +1,4 @@
-# FruitSwap
+# BlockSwap
 
 A MuJoCo environment implementing the block-swapping task from the Diffusion Forcing paper using a Franka Panda robotic arm.
 
@@ -19,16 +19,18 @@ The task involves swapping positions of two blocks (red and blue) using a third 
 ### From Git Repository
 
 ```bash
-pip install git+https://github.com/pranavnt/fruitswap.git
+pip install git+https://github.com/pranavnt/blockswap.git
 ```
 
 ### For Development
 
 ```bash
-git clone https://github.com/pranavnt/fruitswap.git
-cd fruitswap
+git clone --recursive https://github.com/pranavnt/blockswap.git
+cd blockswap
 pip install -e .
 ```
+
+**Note**: This package uses git submodules for the MuJoCo Menagerie assets. Make sure to clone with `--recursive` or run `git submodule update --init --recursive` after cloning.
 
 ## Dependencies
 
@@ -39,7 +41,7 @@ pip install -e .
 ## Quick Start
 
 ```python
-from fruitswap import BlockSwapEnv
+from blockswap import BlockSwapEnv
 
 # Create environment
 env = BlockSwapEnv(
@@ -77,7 +79,7 @@ obs, reward, terminated, truncated, info = env.step(action)
 Run a demo:
 
 ```bash
-fruitswap
+blockswap
 ```
 
 ## License

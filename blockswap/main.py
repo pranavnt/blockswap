@@ -1,5 +1,5 @@
 """
-Main entry point for the FruitSwap package.
+Main entry point for the BlockSwap package.
 """
 
 from .blockswap_env import BlockSwapEnv
@@ -8,7 +8,7 @@ def main():
     """
     Demo function showing basic usage of the BlockSwapEnv.
     """
-    print("Welcome to FruitSwap!")
+    print("Welcome to BlockSwap!")
     print("Creating BlockSwapEnv...")
 
     try:

@@ -36,7 +36,11 @@ import os
 import tempfile
 from typing import Dict, Tuple, Optional, Any
 import xml.etree.ElementTree as ET
-from .panda_ik import PandaIK
+try:
+    from .panda_ik import PandaIK
+except ImportError:
+    # Fallback for when running the module directly
+    from panda_ik import PandaIK
 
 class BlockSwapEnv(gym.Env):
     """
@@ -111,7 +115,7 @@ class BlockSwapEnv(gym.Env):
         """Generate MuJoCo XML for the environment."""
         xml = f"""
 <mujoco model="block_swap">
-    <compiler angle="radian" meshdir="{os.path.join(os.path.dirname(__file__), 'mujoco_menagerie', 'franka_emika_panda', 'assets')}" autolimits="true"/>
+    <compiler angle="radian" meshdir="{os.path.join(os.path.dirname(os.path.dirname(__file__)), 'mujoco_menagerie', 'franka_emika_panda', 'assets')}" autolimits="true"/>
 
     <option gravity="0 0 -9.81" timestep="0.002" integrator="implicit" impratio="10">
         <flag warmstart="enable"/>

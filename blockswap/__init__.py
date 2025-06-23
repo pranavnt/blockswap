@@ -1,5 +1,5 @@
 """
-FruitSwap - Block Swapping Environment with Franka Panda Arm
+BlockSwap - Block Swapping Environment with Franka Panda Arm
 
 A MuJoCo environment implementing the block-swapping task from the Diffusion Forcing paper.
 Task: Swap positions of red and blue blocks using a third empty slot.

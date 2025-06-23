@@ -1,8 +1,8 @@
 """
-Entry point for the FruitSwap project.
+Entry point for the BlockSwap project.
 """
 
-from fruitswap.main import main
+from blockswap.main import main
 
 if __name__ == "__main__":
     main()

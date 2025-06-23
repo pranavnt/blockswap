@@ -1,0 +1,5 @@
+include README.md
+include LICENSE
+recursive-include mujoco_menagerie *.stl *.obj *.xml *.urdf *.mjcf
+global-exclude *.pyc
+global-exclude __pycache__
