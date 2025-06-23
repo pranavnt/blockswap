@@ -8,3 +8,18 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Package build artifacts
+*.egg-info/
+.eggs/
+*.whl
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -36,7 +36,7 @@ import os
 import tempfile
 from typing import Dict, Tuple, Optional, Any
 import xml.etree.ElementTree as ET
-from panda_ik import PandaIK
+from .panda_ik import PandaIK
 
 class BlockSwapEnv(gym.Env):
     """
