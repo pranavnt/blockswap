@@ -9,7 +9,7 @@ The task involves swapping positions of two blocks (red and blue) using a third 
 ## Features
 
 - **Non-Markovian Task**: Requires memory of initial configuration
-- **Multiple Observation Modes**: Full state (dict) or partial (single concatenated vector with camera data)
+- **Multiple Observation Modes**: Full state (single vector) or partial (dictionary with camera data)
 - **Dense or Sparse Rewards**: Progress tracking with optional sparse reward mode
 - **Flexible Control**: End-effector delta control or joint velocity control
 - **Franka Panda Integration**: Realistic robot simulation with MuJoCo
@@ -17,27 +17,27 @@ The task involves swapping positions of two blocks (red and blue) using a third 
 ## Observation Spaces
 
 ### Full Observability (`observation_mode='full'`)
-Returns a dictionary with complete state information:
-- `robot_qpos`: (7,) joint positions
-- `robot_qvel`: (7,) joint velocities
-- `ee_pos`: (3,) end-effector position
-- `ee_quat`: (4,) end-effector quaternion
-- `gripper_state`: (2,) gripper joint positions
-- `red_block_pos`: (3,) red block position
-- `red_block_quat`: (4,) red block quaternion
-- `blue_block_pos`: (3,) blue block position
-- `blue_block_quat`: (4,) blue block quaternion
-- `slot_occupancy`: (3,) which block is in each slot
-- `initial_config`: (3,) initial block configuration
-- `distance_metrics`: (6,) various distance measurements
+Returns a single concatenated vector with 49 elements:
+- Robot joint positions: 7 elements
+- Robot joint velocities: 7 elements
+- End-effector position: 3 elements
+- End-effector quaternion: 4 elements
+- Gripper state: 2 elements
+- Red block position: 3 elements
+- Red block quaternion: 4 elements
+- Blue block position: 3 elements
+- Blue block quaternion: 4 elements
+- Slot occupancy: 3 elements
+- Initial configuration: 3 elements
+- Distance metrics: 6 elements
 
 ### Partial Observability (`observation_mode='partial'`)
-Returns a single concatenated vector with 70,335 elements:
-- Front camera (128×128×3): 49,152 elements (normalized to [0,1])
-- Wrist camera (84×84×3): 21,168 elements (normalized to [0,1])
-- Robot joint positions: 7 elements
-- Gripper state: 2 elements
-- Distance metrics: 6 elements
+Returns a dictionary with camera-based observations:
+- `front_camera`: (128×128×3) RGB image
+- `wrist_camera`: (84×84×3) RGB image
+- `robot_qpos`: (7,) joint positions
+- `gripper_state`: (2,) gripper joint positions
+- `distance_metrics`: (6,) various distance measurements
 
 ## Installation
 

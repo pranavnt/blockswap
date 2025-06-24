@@ -479,31 +479,22 @@ class BlockSwapEnv(gym.Env):
 
         # Observation space
         if self.observation_mode == 'full':
+            # Full observability - single concatenated vector
+            # Calculate total observation size:
+            # robot_qpos: 7, robot_qvel: 7, ee_pos: 3, ee_quat: 4, gripper_state: 2
+            # red_block_pos: 3, red_block_quat: 4, blue_block_pos: 3, blue_block_quat: 4
+            # slot_occupancy: 3, initial_config: 3, distance_metrics: 6
+            # Total: 7+7+3+4+2+3+4+3+4+3+3+6 = 49 elements
+            total_size = 7 + 7 + 3 + 4 + 2 + 3 + 4 + 3 + 4 + 3 + 3 + 6
+            self.observation_space = spaces.Box(-np.inf, np.inf, (total_size,), dtype=np.float32)
+        else:  # partial observability - dictionary
             self.observation_space = spaces.Dict({
+                'front_camera': spaces.Box(0, 255, (128, 128, 3), dtype=np.uint8),
+                'wrist_camera': spaces.Box(0, 255, (84, 84, 3), dtype=np.uint8),
                 'robot_qpos': spaces.Box(-np.inf, np.inf, (7,), dtype=np.float32),
-                'robot_qvel': spaces.Box(-np.inf, np.inf, (7,), dtype=np.float32),
-                'ee_pos': spaces.Box(-np.inf, np.inf, (3,), dtype=np.float32),
-                'ee_quat': spaces.Box(-1, 1, (4,), dtype=np.float32),
                 'gripper_state': spaces.Box(0, 1, (2,), dtype=np.float32),
-                'red_block_pos': spaces.Box(-np.inf, np.inf, (3,), dtype=np.float32),
-                'red_block_quat': spaces.Box(-1, 1, (4,), dtype=np.float32),
-                'blue_block_pos': spaces.Box(-np.inf, np.inf, (3,), dtype=np.float32),
-                'blue_block_quat': spaces.Box(-1, 1, (4,), dtype=np.float32),
-                'slot_occupancy': spaces.Box(0, 2, (3,), dtype=np.float32),
-                'initial_config': spaces.Box(0, 2, (3,), dtype=np.float32),
-                # Add distance metrics to observation for better learning
                 'distance_metrics': spaces.Box(0, np.inf, (6,), dtype=np.float32),
             })
-        else:  # partial observability - single concatenated vector
-            # Calculate total observation size:
-            # front_camera: 128*128*3 = 49,152 (normalized to [0,1])
-            # wrist_camera: 84*84*3 = 21,168 (normalized to [0,1])
-            # robot_qpos: 7
-            # gripper_state: 2
-            # distance_metrics: 6
-            # Total: 70,335 elements
-            total_size = 128*128*3 + 84*84*3 + 7 + 2 + 6
-            self.observation_space = spaces.Box(-np.inf, np.inf, (total_size,), dtype=np.float32)
 
     def reset(self, seed=None, options=None):
         """Reset the environment."""
@@ -630,6 +621,7 @@ class BlockSwapEnv(gym.Env):
         distance_metrics = self._compute_distance_metrics()
 
         if self.observation_mode == 'full':
+            # Full observability - concatenated vector
             # Get block positions
             red_pos = self.data.qpos[9:12].copy()
             red_quat = self.data.qpos[12:16].copy()
@@ -651,43 +643,36 @@ class BlockSwapEnv(gym.Env):
             # Get EE orientation using sensor data
             ee_quat = self._get_ee_quaternion()
 
-            return {
-                'robot_qpos': self.data.qpos[:7].copy(),
-                'robot_qvel': self.data.qvel[:7].copy(),
-                'ee_pos': self.data.site('ee_site').xpos.copy(),
-                'ee_quat': ee_quat,
-                'gripper_state': self.data.qpos[7:9].copy(),
-                'red_block_pos': red_pos,
-                'red_block_quat': red_quat,
-                'blue_block_pos': blue_pos,
-                'blue_block_quat': blue_quat,
-                'slot_occupancy': slot_occupancy,
-                'initial_config': initial_config,
-                'distance_metrics': distance_metrics,
-            }
+            # Concatenate all observations into single vector
+            observation = np.concatenate([
+                self.data.qpos[:7].copy(),                    # robot_qpos: 7 elements
+                self.data.qvel[:7].copy(),                    # robot_qvel: 7 elements
+                self.data.site('ee_site').xpos.copy(),        # ee_pos: 3 elements
+                ee_quat,                                      # ee_quat: 4 elements
+                self.data.qpos[7:9].copy(),                   # gripper_state: 2 elements
+                red_pos,                                      # red_block_pos: 3 elements
+                red_quat,                                     # red_block_quat: 4 elements
+                blue_pos,                                     # blue_block_pos: 3 elements
+                blue_quat,                                    # blue_block_quat: 4 elements
+                slot_occupancy,                               # slot_occupancy: 3 elements
+                initial_config,                               # initial_config: 3 elements
+                distance_metrics,                             # distance_metrics: 6 elements
+            ]).astype(np.float32)
+
+            return observation
         else:
+            # Partial observability - dictionary
             # Render cameras
             front_img = self._render_camera('front_camera', (128, 128))
             wrist_img = self._render_camera('wrist_camera', (84, 84))
 
-            # Flatten and normalize images to [0, 1]
-            front_flat = (front_img.flatten() / 255.0).astype(np.float32)
-            wrist_flat = (wrist_img.flatten() / 255.0).astype(np.float32)
-
-            # Get other observations
-            robot_qpos = self.data.qpos[:7].copy().astype(np.float32)
-            gripper_state = self.data.qpos[7:9].copy().astype(np.float32)
-
-            # Concatenate all observations into single vector
-            observation = np.concatenate([
-                front_flat,        # 128*128*3 = 49,152 elements
-                wrist_flat,        # 84*84*3 = 21,168 elements
-                robot_qpos,        # 7 elements
-                gripper_state,     # 2 elements
-                distance_metrics,  # 6 elements
-            ])
-
-            return observation
+            return {
+                'front_camera': front_img,
+                'wrist_camera': wrist_img,
+                'robot_qpos': self.data.qpos[:7].copy(),
+                'gripper_state': self.data.qpos[7:9].copy(),
+                'distance_metrics': distance_metrics,
+            }
 
     def _compute_distance_metrics(self):
         """Compute current distance metrics for dense rewards."""
@@ -963,8 +948,10 @@ if __name__ == "__main__":
         sparse_reward=False
     )
     obs, info = env1.reset()
-    print(f"Observation space keys: {list(obs.keys())}")
-    print(f"Distance metrics shape: {obs['distance_metrics'].shape}")
+    print(f"Observation type: {type(obs)}")
+    print(f"Observation shape: {obs.shape}")
+    print(f"Total elements: {obs.size}")
+    print(f"Expected: robot_qpos(7) + robot_qvel(7) + ee_pos(3) + ee_quat(4) + gripper_state(2) + red_block_pos(3) + red_block_quat(4) + blue_block_pos(3) + blue_block_quat(4) + slot_occupancy(3) + initial_config(3) + distance_metrics(6) = 49")
 
     # Test 2: Sparse reward mode
     print("\n2. Sparse reward mode:")
@@ -981,10 +968,11 @@ if __name__ == "__main__":
         sparse_reward=False
     )
     obs, info = env3.reset()
-    print(f"Observation type: {type(obs)}")
-    print(f"Observation shape: {obs.shape}")
-    print(f"Total elements: {obs.size}")
-    print(f"Expected: front_camera(49152) + wrist_camera(21168) + robot_qpos(7) + gripper_state(2) + distance_metrics(6) = 70335")
+    print(f"Observation space keys: {list(obs.keys())}")
+    print(f"Front camera shape: {obs['front_camera'].shape}")
+    print(f"Wrist camera shape: {obs['wrist_camera'].shape}")
+    print(f"Robot qpos shape: {obs['robot_qpos'].shape}")
+    print(f"Distance metrics shape: {obs['distance_metrics'].shape}")
 
     # Quick action test
     action = env1.action_space.sample()
