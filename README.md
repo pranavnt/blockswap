@@ -30,7 +30,7 @@ cd blockswap
 pip install -e .
 ```
 
-**Note**: This package uses git submodules for the MuJoCo Menagerie assets. Make sure to clone with `--recursive` or run `git submodule update --init --recursive` after cloning.
+**Note**: This package includes only the necessary Franka Panda assets from MuJoCo Menagerie, keeping the package size optimized (~5MB instead of 1.4GB). For development, the full mujoco_menagerie is available as a git submodule - clone with `--recursive` or run `git submodule update --init --recursive` after cloning.
 
 ## Dependencies
 

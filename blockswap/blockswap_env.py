@@ -111,11 +111,40 @@ class BlockSwapEnv(gym.Env):
         """Set the target end-effector orientation for IK."""
         self.target_ee_orientation = orientation.copy()
 
+    def _get_mujoco_assets_path(self):
+        """Get the path to MuJoCo Menagerie assets, trying multiple locations."""
+        # Try different possible locations for the assets
+        possible_paths = [
+            # Development: submodule in parent directory
+            os.path.join(os.path.dirname(os.path.dirname(__file__)), 'mujoco_menagerie', 'franka_emika_panda', 'assets'),
+            # Package installation: bundled in package
+            os.path.join(os.path.dirname(__file__), 'mujoco_menagerie', 'franka_emika_panda', 'assets'),
+            # System installation
+            os.path.join(os.path.expanduser('~'), '.mujoco', 'mujoco_menagerie', 'franka_emika_panda', 'assets'),
+            # Try relative to package root
+            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'mujoco_menagerie', 'franka_emika_panda', 'assets'),
+        ]
+
+        for path in possible_paths:
+            if os.path.exists(path) and os.path.exists(os.path.join(path, 'link0.stl')):
+                return path
+
+        # If none found, raise a helpful error
+        raise FileNotFoundError(
+            f"Could not find MuJoCo Menagerie assets. Tried the following paths:\n" +
+            "\n".join(f"  - {path}" for path in possible_paths) +
+            "\n\nPlease ensure mujoco_menagerie submodule is initialized:\n" +
+            "  git submodule update --init --recursive\n" +
+            "Or install from source with:\n" +
+            "  git clone --recursive https://github.com/pranavnt/blockswap.git"
+        )
+
     def _create_model_xml(self) -> str:
         """Generate MuJoCo XML for the environment."""
+        assets_path = self._get_mujoco_assets_path()
         xml = f"""
 <mujoco model="block_swap">
-    <compiler angle="radian" meshdir="{os.path.join(os.path.dirname(os.path.dirname(__file__)), 'mujoco_menagerie', 'franka_emika_panda', 'assets')}" autolimits="true"/>
+    <compiler angle="radian" meshdir="{assets_path}" autolimits="true"/>
 
     <option gravity="0 0 -9.81" timestep="0.002" integrator="implicit" impratio="10">
         <flag warmstart="enable"/>

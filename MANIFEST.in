@@ -1,5 +1,8 @@
 include README.md
 include LICENSE
-recursive-include mujoco_menagerie *.stl *.obj *.xml *.urdf *.mjcf
+recursive-include blockswap/mujoco_menagerie/franka_emika_panda *.stl *.obj *.xml *.urdf *.mjcf
+include blockswap/mujoco_menagerie/LICENSE
+include blockswap/mujoco_menagerie/README.md
+include blockswap/mujoco_menagerie/CITATION.cff
 global-exclude *.pyc
 global-exclude __pycache__
