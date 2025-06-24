@@ -10,7 +10,7 @@ The task involves swapping positions of two blocks (red and blue) using a third 
 
 - **Non-Markovian Task**: Requires memory of initial configuration
 - **Multiple Observation Modes**: Full state or partial (camera-based) observations
-- **Advanced Reward Shaping**: Progress tracking with optional sparse rewards
+- **Dense or Sparse Rewards**: Progress tracking with optional sparse reward mode
 - **Flexible Control**: End-effector delta control or joint velocity control
 - **Franka Panda Integration**: Realistic robot simulation with MuJoCo
 
@@ -46,8 +46,7 @@ from blockswap import BlockSwapEnv
 # Create environment
 env = BlockSwapEnv(
     observation_mode='full',  # or 'partial' for camera-based obs
-    reward_shaping=True,      # Enable shaped rewards
-    sparse_reward=False,      # Use only sparse completion reward
+    sparse_reward=False,      # If True, use only sparse completion reward
 )
 
 # Reset and run

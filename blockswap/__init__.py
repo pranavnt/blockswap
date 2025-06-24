@@ -12,20 +12,22 @@ from .panda_ik import PandaIK
 from gymnasium.envs.registration import register
 
 register(
-    id='BlockSwap-v0',
-    entry_point='blockswap:BlockSwapEnv',
-    max_episode_steps=500,
-)
-
-# Also register with the name that might be used in training scripts
-register(
     id='blockswap',
     entry_point='blockswap:BlockSwapEnv',
     max_episode_steps=500,
 )
 
+register(
+    'blockswap-partially-observable',
+    entry_point='blockswap:BlockSwapEnv',
+    max_episode_steps=500,
+    kwargs={
+        'observation_mode': 'partial',
+    }
+)
+
 __version__ = "0.1.0"
-__author__ = "Your Name"
-__email__ = "your.email@example.com"
+__author__ = "Pranav Teegavarapu"
+__email__ = "pranavnt@outlook.com"
 
 __all__ = ["BlockSwapEnv", "PandaIK"]

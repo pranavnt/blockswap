@@ -56,13 +56,11 @@ class BlockSwapEnv(gym.Env):
         self,
         render_mode: Optional[str] = None,
         observation_mode: str = 'full',  # 'full' or 'partial'
-        reward_shaping: bool = True,
-        sparse_reward: bool = False,     # New parameter for sparse rewards
+        sparse_reward: bool = False,     # If True, only give reward on task completion
         max_episode_steps: int = 500,
     ):
         self.render_mode = render_mode
         self.observation_mode = observation_mode
-        self.reward_shaping = reward_shaping
         self.sparse_reward = sparse_reward  # If True, only give reward on task completion
         self.max_episode_steps = max_episode_steps
 
@@ -491,7 +489,7 @@ class BlockSwapEnv(gym.Env):
                 'blue_block_quat': spaces.Box(-1, 1, (4,), dtype=np.float32),
                 'slot_occupancy': spaces.Box(0, 2, (3,), dtype=np.float32),
                 'initial_config': spaces.Box(0, 2, (3,), dtype=np.float32),
-                # Add reward shaping features to observation for better learning
+                # Add distance metrics to observation for better learning
                 'distance_metrics': spaces.Box(0, np.inf, (6,), dtype=np.float32),
             })
         else:  # partial observability
@@ -677,7 +675,7 @@ class BlockSwapEnv(gym.Env):
             }
 
     def _compute_distance_metrics(self):
-        """Compute current distance metrics for reward shaping."""
+        """Compute current distance metrics for dense rewards."""
         ee_pos = self.data.site('ee_site').xpos.copy()
         red_pos = self.data.qpos[9:12].copy()
         blue_pos = self.data.qpos[16:19].copy()
@@ -756,14 +754,14 @@ class BlockSwapEnv(gym.Env):
             info['success'] = False
             terminated = False
 
-        # Apply reward shaping if enabled and not sparse reward mode
-        if self.reward_shaping and not self.sparse_reward:
-            shaped_reward = self._compute_shaped_reward()
-            reward += shaped_reward
-            info['shaped_reward'] = shaped_reward
-        elif self.sparse_reward:
+        # Apply dense rewards if not in sparse reward mode
+        if not self.sparse_reward:
+            dense_reward = self._compute_dense_reward()
+            reward += dense_reward
+            info['dense_reward'] = dense_reward
+        else:
             # In sparse reward mode, only give completion reward
-            info['shaped_reward'] = 0.0
+            info['dense_reward'] = 0.0
 
         # Safety penalties (applied even in sparse mode)
         safety_penalty = self._compute_safety_penalties()
@@ -779,9 +777,9 @@ class BlockSwapEnv(gym.Env):
 
         return reward, terminated, info
 
-    def _compute_shaped_reward(self):
+    def _compute_dense_reward(self):
         """
-        Compute shaped reward with multiple components that get disabled when complete.
+        Compute dense reward with multiple components.
 
         Each component contributes -0.1 * distance. Once a phase is complete,
         that component is excluded so rewards don't drop during phase transitions.
@@ -943,11 +941,10 @@ if __name__ == "__main__":
     # Example usage showing different configurations
     print("Testing BlockSwap Environment configurations...")
 
-    # Test 1: Full observability with reward shaping
-    print("\n1. Full observability with reward shaping:")
+    # Test 1: Full observability with dense rewards
+    print("\n1. Full observability with dense rewards:")
     env1 = BlockSwapEnv(
         observation_mode='full',
-        reward_shaping=True,
         sparse_reward=False
     )
     obs, info = env1.reset()
@@ -958,7 +955,6 @@ if __name__ == "__main__":
     print("\n2. Sparse reward mode:")
     env2 = BlockSwapEnv(
         observation_mode='full',
-        reward_shaping=False,
         sparse_reward=True
     )
     obs, info = env2.reset()
@@ -967,7 +963,6 @@ if __name__ == "__main__":
     print("\n3. Partial observability (camera-based):")
     env3 = BlockSwapEnv(
         observation_mode='partial',
-        reward_shaping=True,
         sparse_reward=False
     )
     obs, info = env3.reset()
@@ -979,10 +974,10 @@ if __name__ == "__main__":
     action = env1.action_space.sample()
     obs, reward, terminated, truncated, info = env1.step(action)
     print(f"\nSample step reward: {reward}")
-    print(f"Shaped reward component: {info.get('shaped_reward', 'N/A')}")
+    print(f"Dense reward component: {info.get('dense_reward', 'N/A')}")
     print(f"Safety penalty: {info.get('safety_penalty', 'N/A')}")
 
-    print(f"\nReward shaping explanation:")
+    print(f"\nDense reward explanation:")
     print(f"- Reward = sum of active distance components (-0.1 * distance)")
     print(f"- Components get excluded when their phase completes")
     print(f"- This prevents reward drops during phase transitions")
