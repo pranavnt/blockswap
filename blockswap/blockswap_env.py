@@ -58,11 +58,13 @@ class BlockSwapEnv(gym.Env):
         observation_mode: str = 'full',  # 'full' or 'partial'
         sparse_reward: bool = False,     # If True, only give reward on task completion
         max_episode_steps: int = 500,
+        action_scale: Optional[tuple] = None,  # For compatibility with training scripts
     ):
         self.render_mode = render_mode
         self.observation_mode = observation_mode
         self.sparse_reward = sparse_reward  # If True, only give reward on task completion
         self.max_episode_steps = max_episode_steps
+        self.action_scale = action_scale  # For compatibility with training scripts
 
         # Task parameters
         self.cylinder_height = 0.55  # Height of cylindrical tables (reduced by ~8%)
