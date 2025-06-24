@@ -492,14 +492,16 @@ class BlockSwapEnv(gym.Env):
                 # Add distance metrics to observation for better learning
                 'distance_metrics': spaces.Box(0, np.inf, (6,), dtype=np.float32),
             })
-        else:  # partial observability
-            self.observation_space = spaces.Dict({
-                'front_camera': spaces.Box(0, 255, (128, 128, 3), dtype=np.uint8),
-                'wrist_camera': spaces.Box(0, 255, (84, 84, 3), dtype=np.uint8),
-                'robot_qpos': spaces.Box(-np.inf, np.inf, (7,), dtype=np.float32),
-                'gripper_state': spaces.Box(0, 1, (2,), dtype=np.float32),
-                'distance_metrics': spaces.Box(0, np.inf, (6,), dtype=np.float32),
-            })
+        else:  # partial observability - single concatenated vector
+            # Calculate total observation size:
+            # front_camera: 128*128*3 = 49,152 (normalized to [0,1])
+            # wrist_camera: 84*84*3 = 21,168 (normalized to [0,1])
+            # robot_qpos: 7
+            # gripper_state: 2
+            # distance_metrics: 6
+            # Total: 70,335 elements
+            total_size = 128*128*3 + 84*84*3 + 7 + 2 + 6
+            self.observation_space = spaces.Box(-np.inf, np.inf, (total_size,), dtype=np.float32)
 
     def reset(self, seed=None, options=None):
         """Reset the environment."""
@@ -666,13 +668,24 @@ class BlockSwapEnv(gym.Env):
             front_img = self._render_camera('front_camera', (128, 128))
             wrist_img = self._render_camera('wrist_camera', (84, 84))
 
-            return {
-                'front_camera': front_img,
-                'wrist_camera': wrist_img,
-                'robot_qpos': self.data.qpos[:7].copy(),
-                'gripper_state': self.data.qpos[7:9].copy(),
-                'distance_metrics': distance_metrics,
-            }
+            # Flatten and normalize images to [0, 1]
+            front_flat = (front_img.flatten() / 255.0).astype(np.float32)
+            wrist_flat = (wrist_img.flatten() / 255.0).astype(np.float32)
+
+            # Get other observations
+            robot_qpos = self.data.qpos[:7].copy().astype(np.float32)
+            gripper_state = self.data.qpos[7:9].copy().astype(np.float32)
+
+            # Concatenate all observations into single vector
+            observation = np.concatenate([
+                front_flat,        # 128*128*3 = 49,152 elements
+                wrist_flat,        # 84*84*3 = 21,168 elements
+                robot_qpos,        # 7 elements
+                gripper_state,     # 2 elements
+                distance_metrics,  # 6 elements
+            ])
+
+            return observation
 
     def _compute_distance_metrics(self):
         """Compute current distance metrics for dense rewards."""
@@ -966,9 +979,10 @@ if __name__ == "__main__":
         sparse_reward=False
     )
     obs, info = env3.reset()
-    print(f"Observation space keys: {list(obs.keys())}")
-    print(f"Front camera shape: {obs['front_camera'].shape}")
-    print(f"Wrist camera shape: {obs['wrist_camera'].shape}")
+    print(f"Observation type: {type(obs)}")
+    print(f"Observation shape: {obs.shape}")
+    print(f"Total elements: {obs.size}")
+    print(f"Expected: front_camera(49152) + wrist_camera(21168) + robot_qpos(7) + gripper_state(2) + distance_metrics(6) = 70335")
 
     # Quick action test
     action = env1.action_space.sample()
