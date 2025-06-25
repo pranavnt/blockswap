@@ -423,13 +423,13 @@ class BlockSwapEnv(gym.Env):
         <!-- Blocks -->
         <body name="red_block" pos="-0.3 0.3 0.575">
             <joint type="free"/>
-            <geom name="red_block_geom" type="box" size="0.025 0.025 0.025" material="red_mat" friction="2.5 2.5 0.01"/>
+            <geom name="red_block_geom" type="box" size="0.025 0.025 0.025" material="red_mat" friction="2.5 2.5 0.01" mass="0.01"/>
             <site name="red_block_site" pos="0 0 0" size="0.01"/>
         </body>
 
         <body name="blue_block" pos="0.0 0.3 0.575">
             <joint type="free"/>
-            <geom name="blue_block_geom" type="box" size="0.025 0.025 0.025" material="blue_mat" friction="2.5 2.5 0.01"/>
+            <geom name="blue_block_geom" type="box" size="0.025 0.025 0.025" material="blue_mat" friction="2.5 2.5 0.01" mass="0.01"/>
             <site name="blue_block_site" pos="0 0 0" size="0.01"/>
         </body>
 
@@ -595,8 +595,8 @@ class BlockSwapEnv(gym.Env):
         # Compute target position
         target_pos = current_pos + delta_pos
 
-        # Use position-only IK for reliable movement
-        success, target_joints = self.ik_solver.solve_ik_position_only(
+        # Use point-down IK for gripper orientation constraint
+        success, target_joints = self.ik_solver.solve_ik_point_down(
             target_pos,
             seed=self.data.qpos[:7].copy()
         )

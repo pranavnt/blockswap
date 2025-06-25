@@ -55,6 +55,9 @@ class PandaIK:
         self.orientation_tolerance = 1e-2
         self.max_iterations = 50
         
+        # Desired world direction for the gripper Z axis (+Z of hand frame)
+        self.WORLD_DOWN = np.array([0.0, 0.0, -1.0], dtype=np.float64)
+        
     def forward_kinematics(self, joint_angles: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """
         Compute forward kinematics for given joint angles.
@@ -265,6 +268,27 @@ class PandaIK:
             
         return np.array([qw, qx, qy, qz])
         
+    def _quat_to_mat(self, q: np.ndarray) -> np.ndarray:
+        """Convert quaternion to rotation matrix."""
+        w, x, y, z = q
+        return np.array([
+            [1 - 2*y*y - 2*z*z,     2*x*y - 2*z*w,     2*x*z + 2*y*w],
+            [2*x*y + 2*z*w,     1 - 2*x*x - 2*z*z,     2*y*z - 2*x*w],
+            [2*x*z - 2*y*w,         2*y*z + 2*x*w, 1 - 2*x*x - 2*y*y],
+        ], dtype=np.float64)
+        
+    def _axis_error(
+        self,
+        current_R: np.ndarray,
+        desired_axis_world: np.ndarray,
+        body_axis_idx: int = 2,           # 0:+X, 1:+Y, 2:+Z
+    ) -> np.ndarray:
+        """Torque-like vector driving body-axis → desired world axis."""
+        cur = current_R[:, body_axis_idx]
+        cur /= np.linalg.norm(cur)
+        des = desired_axis_world / np.linalg.norm(desired_axis_world)
+        return np.cross(cur, des)        # 3-vector
+        
     def solve_ik_position_only(self, target_pos: np.ndarray, seed: Optional[np.ndarray] = None) -> Tuple[bool, np.ndarray]:
         """
         Solve IK for position only (3-DOF problem for 7-DOF robot).
@@ -359,3 +383,46 @@ class PandaIK:
                 current_q = q_solution
                 
         return True, trajectories
+        
+    def solve_ik_point_down(
+        self,
+        target_pos: np.ndarray,
+        seed: np.ndarray | None = None,
+        position_tolerance: float | None = None,
+        orientation_tolerance: float | None = None,
+        max_iterations: int | None = None,
+    ) -> Tuple[bool, np.ndarray]:
+        """Like solve_ik_full, but only constrains tool Z to world −Z."""
+        pos_tol = position_tolerance or self.position_tolerance
+        ang_tol = orientation_tolerance or self.orientation_tolerance
+        iters   = max_iterations or self.max_iterations
+
+        q = self.data.qpos[:7].copy() if seed is None else seed.copy()
+        q = self._clamp_joints(q)
+
+        for _ in range(iters):
+            cur_pos, cur_quat = self.forward_kinematics(q)
+            pos_err = target_pos - cur_pos
+
+            # orientation error that ignores yaw
+            cur_R      = self._quat_to_mat(cur_quat)
+            orient_err = self._axis_error(cur_R, self.WORLD_DOWN)
+
+            if (np.linalg.norm(pos_err) < pos_tol and
+                    np.linalg.norm(orient_err) < ang_tol):
+                return True, q
+
+            # full 6×7 Jacobian (pos+rot)
+            J = self._compute_jacobian(q, full_jacobian=True)
+            # build error vector (size 6)
+            err = np.concatenate([pos_err, orient_err])
+
+            # damped least squares
+            λ2 = 1e-4
+            Jt = J.T
+            delta_q = Jt @ np.linalg.inv(J @ Jt + λ2 * np.eye(6)) @ err
+
+            # modest step size
+            q = self._clamp_joints(q + 0.5 * delta_q)
+
+        return False, q  # failed

@@ -30,6 +30,8 @@ dependencies = [
     "numpy>=1.21.0",
     "gymnasium>=0.28.0",
     "mujoco>=2.3.0",
+    "keyboard>=0.13.5",
+    "ur-analytic-ik==0.0.5",
 ]
 
 [project.optional-dependencies]
